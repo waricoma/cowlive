@@ -1,43 +1,56 @@
 'use strict';
 
-const socket = io();
 const params = (new URL(document.location)).searchParams;
 const SECRET = params.get('secret');
 const video = document.getElementsByTagName('video')[0];
 const canvas = document.getElementsByTagName('canvas')[0];
 
-let interval;
-let streamEnabled = false;
+const wait = async (time) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, time);
+  });
+};
 
-socket.on('connect', () => {
-  socket.emit('auth', SECRET);
+const main = async () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const canvasContext = canvas.getContext('2d');
+  canvasContext.drawImage(video, 0, 0);
+  const type = 'image/png';
+  const bin = atob(canvas.toDataURL(type).replace(/^.*,/, ''));
+  const buffer = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    buffer[i] = bin.charCodeAt(i);
+  }
+  const blob = new Blob([buffer.buffer], { type });
 
-  interval = setInterval(() => {
-    if (!streamEnabled) {
-      return;
-    }
+  const data = new FormData();
+  data.append('secret', SECRET);
+  data.append('frame', blob, 'frame.png');
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const canvasContext = canvas.getContext('2d');
-    canvasContext.drawImage(video, 0, 0);
+  try {
+    await axios.post(
+      '/frame',
+      data,
+      {
+        headers: {
+          'content-type': 'multipart/form-data'
+        }
+      }
+    );
+  } catch (err) {
+    console.error(err);
+    return;
+  }
 
-    socket.emit('frame', canvas.toDataURL('image/png'));
-  }, 1000);
-});
-
-socket.on('auth_result', (authResult) => {
-  console.log('auth_result', authResult);
-});
-
-socket.on('disconnect', () => {
-  clearInterval(interval);
-});
+  await wait(250);
+  await main();
+};
+main();
 
 navigator.mediaDevices
   .getDisplayMedia({ video: true })
   .then((stream) => {
     video.srcObject = stream;
-    streamEnabled = true;
   })
   .catch((err) => console.error('ERR[getUserMedia]', err));

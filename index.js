@@ -1,7 +1,9 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const formData = require('express-form-data');
 const app = express();
 
 const http = require('http').Server(app);
@@ -10,44 +12,27 @@ const PORT = process.env.PORT || 5000;
 const SECRET_HOST = process.env.SECRET_HOST || 'secretHost';
 
 app.use(express.static(path.join(__dirname, 'public')));
-
-let host;
-let clients = {};
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
+app.use(formData.parse());
 
 io.on('connection', (socket) => {
-  clients[socket.id] = socket;
+  console.log('connected', socket.id);
+});
 
-  socket.on('auth', (secretHost) => {
-    if (secretHost !== SECRET_HOST) {
-      socket.emit('auth_result', 'failed');
-      return;
-    }
+app.post('/frame', (req, res) => {
+  if (!req.body.secret || !req.files.frame) {
+    res.status(400).send('plz set secret and frame');
+    return;
+  }
 
-    socket.emit('auth_result', 'success');
-    host = socket;
-  });
+  if (req.body.secret !== SECRET_HOST) {
+    res.status(401).send('secret is invalid');
+    return;
+  }
 
-  socket.on('frame', (frame) => {
-    if (!host) {
-      return;
-    }
-
-    if (socket.id !== host.id) {
-      return;
-    }
-
-    io.emit('render', frame);
-  });
-
-  socket.on('disconnect', () => {
-    if (host) {
-      if (socket.id === host.id) {
-        host = null;
-      }
-    }
-
-    delete clients[socket.id];
-  });
+  io.emit('render', `data:image/png;base64,${fs.readFileSync(req.files.frame.path, { encoding: 'base64' })}`);
+  res.send('received');
 });
 
 http.listen(PORT, () => {
