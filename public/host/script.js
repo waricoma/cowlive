@@ -5,12 +5,6 @@ const SECRET = params.get('secret');
 const video = document.getElementsByTagName('video')[0];
 const canvas = document.getElementsByTagName('canvas')[0];
 
-const wait = async (time) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(resolve, time);
-  });
-};
-
 const main = async () => {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -29,7 +23,7 @@ const main = async () => {
   data.append('frame', blob, 'frame.png');
 
   try {
-    axios.post(
+    await axios.post(
       '/frame',
       data,
       {
@@ -43,7 +37,6 @@ const main = async () => {
     return;
   }
 
-  await wait(1000/33);
   await main();
 };
 main();
