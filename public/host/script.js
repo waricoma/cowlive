@@ -29,7 +29,7 @@ const main = async () => {
   data.append('frame', blob, 'frame.png');
 
   try {
-    await axios.post(
+    axios.post(
       '/frame',
       data,
       {
@@ -43,7 +43,7 @@ const main = async () => {
     return;
   }
 
-  await wait(250);
+  await wait(1000/33);
   await main();
 };
 main();
