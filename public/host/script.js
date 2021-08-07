@@ -23,7 +23,7 @@ socket.on('connect', () => {
     canvasContext.drawImage(video, 0, 0);
 
     socket.emit('frame', canvas.toDataURL('image/png'));
-  }, 16);
+  }, 1000);
 });
 
 socket.on('auth_result', (authResult) => {
